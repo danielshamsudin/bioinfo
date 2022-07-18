@@ -17,10 +17,6 @@ def calculate(seqtitle, seq1, seq2):
     left_arrow = "\u2190"
     up_left_arrow = "\u2196"
 
-    # seqtitle = input("Enter sequence pair: ")
-    # seq1 = input("Enter sequence 1: ")
-    # seq2 = input("Enter sequence 2: ")
-
     n_rows = len(seq1) + 1
     n_cols = len(seq2) + 1
     row_labels = [label for label in "-" + seq1]
