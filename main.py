@@ -2,8 +2,89 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from IPython.core.display import HTML
+from itertools import product
+from collections import deque
 
 st.title("Enhanced DPSA")
+
+
+def find_match(a, b, match, mismatch) -> list:
+    """
+    @param a: str
+    @param b: str
+    @param match: int
+    @param mismatch: list(int)
+    @return: tuple
+    """
+
+    if a == b:
+        return match
+
+    if ((a == "A" or a == "G") and (b == "G" or b == "A")) or (
+        (a == "T" or a == "C") and (b == "C" or b == "T")
+    ):
+        return mismatch[0]
+
+    return mismatch[1]
+
+
+def needleman_wunsch(x: str, y: str, match: int, mismatch: list, gap: int) -> tuple:
+
+    N, M = len(x), len(y)
+    # s = lambda a, b: match if a == b else mismatch
+    s = lambda a, b: find_match(a, b, match, mismatch)
+
+    DIAG = -1, -1
+    LEFT = -1, 0
+    UP = 0, -1
+
+    # Create tables F and Ptr
+    F = {}
+    Ptr = {}
+
+    F[-1, -1] = 0
+    for i in range(N):
+        F[i, -1] = -i
+    for j in range(M):
+        F[-1, j] = -j
+
+    option_Ptr = DIAG, LEFT, UP
+    for i, j in product(range(N), range(M)):
+        option_F = (
+            F[i - 1, j - 1] + s(x[i], y[j]),
+            F[i - 1, j] + gap,
+            F[i, j - 1] + gap,
+        )
+        F[i, j], Ptr[i, j] = max(zip(option_F, option_Ptr))
+
+    # Work backwards from (N - 1, M - 1) to (0, 0)
+    # to find the best alignment.
+    alignment = deque()
+    i, j = N - 1, M - 1
+    while i >= 0 and j >= 0:
+        direction = Ptr[i, j]
+        if direction == DIAG:
+            element = i, j
+        elif direction == LEFT:
+            element = i, None
+        elif direction == UP:
+            element = None, j
+        alignment.appendleft(element)
+        di, dj = direction
+        i, j = i + di, j + dj
+    while i >= 0:
+        alignment.appendleft((i, None))
+        i -= 1
+    while j >= 0:
+        alignment.appendleft((None, j))
+        j -= 1
+
+    return list(alignment)
+
+
+def print_alignment(x, y, alignment):
+    st.write("".join("-" if i is None else x[i] for i, _ in alignment))
+    st.write("".join("-" if j is None else y[j] for _, j in alignment))
 
 
 def pretty_table(data_array, row_labels, col_labels):
@@ -84,6 +165,18 @@ def calculate(seqtitle, seq1, seq2):
     st.write(pretty_table(scoring_array, row_labels, col_labels))
     st.write("\n")
     st.write(pretty_table(traceback_array, row_labels, col_labels))
+    st.write("\n")
+    print_alignment(
+        seq1,
+        seq2,
+        needleman_wunsch(
+            seq1,
+            seq2,
+            match_bonus,
+            [mismatch_penalty_transition, mismatch_penalty_transversion],
+            gap_penalty,
+        ),
+    )
 
 
 with st.sidebar.form("Input"):
